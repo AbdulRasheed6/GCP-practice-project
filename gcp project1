@@ -1,0 +1,207 @@
+# LAB: Architecting with Google Kubernetes Engine fundamentals: Introduction to Containers and Dockers
+
+
+## objectives:
+
+In this lab, you will learn how to perform the following tasks:
+
+            - Build a Docker image.
+
+            -  Push a Docker image to Google Cloud Registry.
+
+            -  Run a Docker container.
+
+## Stops:
+
+1. In this lab you are provided with a VM instance  k8s-workshop-module-1-lab, SSH into the VM instance
+
+           gcloud compute ssh k8s-workshop-module-1-lab
+           
+      - Make sure the instance is fully provisioned. To do this, run the following command and look for the kickstart directory.
+
+
+             ls /
+             
+      -  The source code for this lab is available in the /kickstart folder. Switch to that directory.
+
+             cd /kickstart
+             
+      -  List the content of the folder
+      
+              ls -lh
+              
+              
+         Result:
+         
+         
+                You should see a Dockerfile and web-server.py. web-server.py is a simple Python application that runs a web server which responds to HTTP requests on localhost:8888 and outputs the hostname.
+
+
+
+2.  Install dependencies.
+
+    -Install the latest version of Python and PIP.
+
+             sudo apt-get install -y python3 python3-pip
+
+    -  Install Tornado library that is required by the application.
+
+              pip3 install tornado
+              
+              
+    -   Run the Python application in the background.
+
+               python3 web-server.py &
+               
+               
+    -   Ensure that the web server is accessible.
+
+                curl http://localhost:8888
+                
+      Result: 
+                Hostname:  k8s-workshop-module-1-lab
+                
+                
+    -  Terminate the web server.
+
+                 kill %1
+                 
+                 
+3.    Package Using Docker
+
+
+      -     Look at the Dockerfile.
+                  
+                  
+                  cat Dockerfile
+                  
+                  
+      -     Build a Docker image with the web server.
+
+                   sudo docker build -t py-web-server:v1 .
+                   
+      -      Run the web server using Docker.
+                    
+                    
+                    sudo docker run -d -p 8888:8888 --name py-web-server -h my-web-server py-web-server:v1
+                    
+      -      Try accessing the web server again, and then stop the container.
+
+                    
+                    curl http://localhost:8888
+                    
+                    sudo docker rm -f py-web-server
+                    
+                    
+4.       Upload the Image to a Registry
+
+
+      -     Add the signed in user to the Docker group so you can run docker commands without sudo and push the image to the repository as an authenticated user using the Container Registry credential helper.
+
+     
+                    sudo usermod -aG docker $USER
+                    
+      -      Exit your the SSH session, return to the VM Instances screen in the GCP Console, and launch a new SSH session. This action is needed so that the group change you just made will take effect.
+
+      
+      
+     -      In the new SSH session, return to the kickstart directory.
+
+
+                     cd /kickstart
+                     
+                     
+    -        Store your GCP project name in an environment variable.
+
+
+                      export GCP_PROJECT=`gcloud config list core/project --format='value(core.project)'`
+                      
+                      
+    -        Rebuild the Docker image with a tag that includes the registry name gcr.io and the project ID as a prefix.
+
+
+                       
+                       docker build -t "gcr.io/${GCP_PROJECT}/py-web-server:v1" .
+                       
+  
+5.       Make the Image Publicly Accessible
+
+
+
+    -        Configure Docker to use gcloud as a Container Registry credential helper (you are only required to do this once).
+
+
+
+                        PATH=/usr/lib/google-cloud-sdk/bin:$PATH
+                        gcloud auth configure-docker
+                        
+               When prompted, press ENTER.
+
+
+
+   -          Push the image to gcr.io.
+
+                         
+                         docker push gcr.io/${GCP_PROJECT}/py-web-server:v1
+                         
+                         
+   -       To see the image stored as a bucket (object) in your Google Cloud Storage repository
+   
+                        
+                        gcloud copute image list
+                        
+            ## this will bring forth all the images stored in the bucket
+            
+            
+   -      Update the permissions on Google Cloud Storage to make your image repository publicly accessible.
+
+
+                        gsutil defacl ch -u AllUsers:R gs://artifacts.${GCP_PROJECT}.appspot.com
+                        
+                        gsutil acl ch -r -u AllUsers:R gs://artifacts.${GCP_PROJECT}.appspot.com
+                        
+                        gsutil acl ch -u AllUsers:R gs://artifacts.${GCP_PROJECT}.appspot.com
+                        
+             ## the image is now available to anyone who has access to your GCP project
+             
+             
+6.      Run the Web Server From Any Machine
+
+
+   -      The Docker image can now be run from any machine that has Docker installed by running the following command.
+
+                        
+                        
+                        docker run -d -p 8888:8888 -h my-web-server gcr.io/${GCP_PROJECT}/py-web-server:v1
+                        
+   -       Exit the lab environment and return to the Cloud Shell.
+
+
+
+                         exit
+
+                        
+
+
+
+                       
+    
+    
+    
+
+
+
+
+     
+     
+
+
+
+
+
+
+    -    
+
+
+
+            
